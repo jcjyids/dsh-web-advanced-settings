@@ -1,7 +1,7 @@
 {
   "name": "dsh-advanced-listening-settings",
   "version": "1.0.0",
-  "description": "DSH 高级监听设置（非官方社区插件，profile: web）：全局/指定 IP 监听、设置端口、取消鉴权、远程访问兼容（宿主面判定 + 入口头规范化）、宿主重启，以及卸载前的一键完全清理。基于 dsh 0.1.5-rc.3，由 DSv4.1flash 构建。",
+  "description": "DSH 高级监听设置（profile: web）：全局/指定 IP 监听、设置端口、取消鉴权、远程访问兼容（宿主面判定 + 入口头规范化）、宿主重启，以及卸载前的一键完全清理。基于 dsh 0.1.5-rc.3，由 DSv4.1flash 构建。",
   "license": "MIT",
   "private": false,
   "type": "module",
