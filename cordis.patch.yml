@@ -1,0 +1,18 @@
+# dsh-advanced-listening-settings —— bundle 补丁层。
+#
+# 这个文件是**静态**的：它只做一件事，把本插件的宿主行插入 profile 组合。
+# 运行期状态全部由插件自己维护，且默认态不落盘：
+#   · ~/.dsh/profiles/<profile>/advanced-listening-settings.json —— 只在偏离默认
+#     设置时存在（唯一真源；回到默认态会自动删除）
+#   · ~/.dsh/profiles/<profile>/cordis.patch.yml 的“托管块” —— 只在必须由组合层
+#     决定的值（0.0.0.0 绑定 / 非默认端口）上落盘，回到默认会自动清除
+#
+# 说明：绑定地址必须写在组合里，是因为官方 webserver 的 host/port 是插件配置，
+# 只有 Loader 在启动时读得到；运行期改端口只能靠热重载或重启宿主。
+#
+# 卸载前想彻底回到装前状态：面板「配置与清理… → 完全清理」，或
+#   npx -y dsh-advanced-listening-settings cleanup
+
+- insert:
+    - id: advanced-listening-settings
+      name: 'dsh-advanced-listening-settings'

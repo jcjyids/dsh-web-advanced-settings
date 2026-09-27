@@ -1,0 +1,50 @@
+{
+  "name": "dsh-advanced-listening-settings",
+  "version": "1.0.0",
+  "description": "DSH 高级监听设置：调整全局/指定 IP 监听、设置端口、取消鉴权、远程访问兼容（宿主面判定 + 入口头规范化）、宿主重启，以及卸载前的一键完全清理。基于0.1.5-rc.3，完全由DSv4.1flash构建",
+  "license": "MTI",
+  "private": false,
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "bin": {
+    "dsh-advanced-listening-cleanup": "bin/cleanup.mjs"
+  },
+  "scripts": {
+    "test": "node test/patch-rewrite.test.mjs && node test/ingress-normalize.test.mjs && node test/client-bundle.test.mjs && node test/cleanup-cli.test.mjs && node test/restart-helper.test.mjs",
+    "test:e2e": "node test/e2e-isolated.mjs",
+    "verify": "npm test && npm run test:e2e",
+    "cleanup": "node bin/cleanup.mjs"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "bin/cleanup.mjs",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "lan",
+    "listening",
+    "settings"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  }
+}
