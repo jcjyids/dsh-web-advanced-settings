@@ -39,7 +39,7 @@ dsh plugin --profile web add dsh-advanced-listening-settings
 
 # 或从本地目录 / tarball
 dsh plugin --profile web add "C:\path\to\dsh-advanced-listening-settings"
-dsh plugin --profile web add .\dsh-advanced-listening-settings-1.0.0.tgz
+dsh plugin --profile web add .\dsh-advanced-listening-settings-1.0.1.tgz
 ```
 
 然后重启一次 dsh（面板里的「重启 dsh」按钮，或手动重启）。重启后：**设置 → 高级监听设置**。

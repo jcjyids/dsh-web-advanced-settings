@@ -16,15 +16,7 @@
  *   · 鉴权在 HostConnectionService 上是两个公开方法（requestRejection /
  *     authorizeIndex），可以在实例上可逆地覆写，不需要改官方源码。
  *
- * 与 v1.0.0 相比的修复（详见 README「修复记录」）：
- *   · profile 目录改为优先取 ctx.baseUrl（当前真正运行的 profile），扫描仅作兜底；
- *   · 全局 → 指定 IP 切换时先让 webserver 回到回环再建直通监听，直通监听失败会自动重试；
- *   · 从指定 IP 切回全局前先关闭直通监听并等待端口释放，避免 rebind 撞端口；
- *   · 取消鉴权/信任白名单覆写带所有权标记，绝不误删其它插件的覆写；
- *   · patch 读写走原子替换，CRLF 文件的行偏移修正；
- *   · 新增周期对账，任何一次热重载竞态都能自愈。
- *
- * v1.0.2 追加（远程访问可用性，做法对齐社区 dsh-pocket）：
+ * 两处远程访问兼容改写（做法对齐社区 dsh-pocket）：
  *   · 入口头规范化：把“Host 是本机局域网 IP”的请求改写回 `127.0.0.1:<port>`
  *     （Host/Origin/Referer/Sec-Fetch-Site），否则 dsh-plugin 市场的
  *     `isSameOrigin()` 只认回环 Origin，所有 POST 会瞬间 403“不可达”；
@@ -33,16 +25,12 @@
  *     降级 memory，模型/凭据页可用；
  *   · 两者都只影响“从本机局域网地址进来”的请求，未知 Host 仍由官方围栏拒绝。
  *
- * v2.0.0（可 npm 分发 / 卸载可干净回退）：
- *   · 全面改名：包名、插件行、客户端注册 id 统一为 dsh-advanced-listening-settings，
- *     分区标题改为「高级监听设置」；
- *   · 重启器不再落盘：改用 `node -e <源码>` 两段式（源码经环境变量传给第二段），
- *     `~/.dsh/web-advanced-restart.cjs` 这类 profile 之外的文件彻底消失；
+ * 卸载可干净回退：
+ *   · 重启器不落盘：用 `node -e <源码>` 两段式（源码经环境变量传给第二段），
+ *     profile 之外不产生任何文件；
  *   · 默认态零残留：设置文件只在偏离默认时存在，回到默认自动删除；托管块只在
  *     真的需要（0.0.0.0 或非默认端口）时写入，不需要时自动移除；
- *   · 新增「完全清理」：面板一键 + bin/cleanup.mjs（卸载后可用 npx 跑）；
- *   · 旧装兼容：旧的 web-advanced-settings.json / 旧托管块标记 / 旧重启器
- *     在挂载时自动迁移或删除，不会变成卸不掉的残留。
+ *   · 提供面板「完全清理」与 bin/cleanup.mjs（卸载前后都能跑）。
  *
  * @module dsh-advanced-listening-settings
  */
@@ -68,7 +56,7 @@ export const name = 'advanced-listening-settings'
 /** 硬依赖：没有 webServer 就没有可配置的对象。 */
 export const inject = ['webServer']
 
-const VERSION = '1.0.0'
+const VERSION = '1.0.1'
 const LOG_TAG = '[advanced-listening-settings]'
 const ALL_INTERFACES = '0.0.0.0'
 const LOOPBACK = '127.0.0.1'
