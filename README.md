@@ -1,8 +1,21 @@
 # dsh-advanced-listening-settings — 高级监听设置
 
+[![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/jcjyids/dsh-web-advanced-settings)
+
+> **非官方社区插件**：本项目由社区维护，与 DeepSeek AI / DeepSeek Harness 官方无隶属关系。
+> 支持 profile：`web`（`dsh plugin --profile web add dsh-advanced-listening-settings`）。
+
 给 DSH Web GUI 的「设置」加一个独立分区：**高级监听设置**。它解决的是官方刻意不开放的那部分能力——把 Web 服务暴露到局域网，以及按网卡 IP 精确控制暴露范围。
 
 插件本体是一个标准的 DSH bundle 插件（`dsh.bundle.patch` + `dsh.client`），宿主半边 `index.js`、浏览器半边 `client.js`、bundle 补丁 `cordis.patch.yml`。
+
+## 界面预览
+
+![高级监听设置面板](docs/visual/panel-main.png)
+
+手机或另一台电脑从局域网地址打开同一实例时，设置页里的模型与凭据不再报「settings are unavailable」，插件市场的系统诊断也能真正跑完（详见「远程访问为什么还需要两处改写」）：
+
+![远程访问下模型设置页可用](docs/visual/remote-after-models-ok.png)
 
 ## 面板内容
 
@@ -24,7 +37,7 @@ dsh plugin --profile web add dsh-advanced-listening-settings
 
 # 或从本地目录 / tarball
 dsh plugin --profile web add "C:\path\to\dsh-advanced-listening-settings"
-dsh plugin --profile web add .\dsh-advanced-listening-settings-2.0.0.tgz
+dsh plugin --profile web add .\dsh-advanced-listening-settings-1.0.0.tgz
 ```
 
 然后重启一次 dsh（面板里的「重启 dsh」按钮，或手动重启）。重启后：**设置 → 高级监听设置**。
@@ -66,7 +79,7 @@ npx -y dsh-advanced-listening-settings cleanup --profile web --home "$env:USERPR
    > 组合层补丁是**整段替换**目标行的 `config`，所以托管块必须复述官方 webserver 行的全部 5 个键（`host` / `port` / `compression` / `compressionLevel` / `compressionThresholdBytes`）。`test/patch-rewrite.test.mjs` 会守住这条契约。
 3. **鉴权是 `HostConnectionService` 上的两个公开方法**（`requestRejection` 返回 `403`/`401`，`authorizeIndex` 负责 index 的 token/Cookie 交换）。插件在实例上做可逆覆写：只摘掉 401 那一层；`authorizeIndex` 的覆写仍然先调用基函数，把 403 围栏原样保留（否则 DNS rebinding 的 Host 也能拿到 index.html）。插件停止或卸载时自动还原，且只还原“仍属于自己的那一层”。
 
-## 数据落在哪（v2：默认态零残留）
+## 数据落在哪（默认态零残留）
 
 | 文件 | 什么时候存在 | 内容 |
 | --- | --- | --- |
@@ -90,7 +103,7 @@ profile 目录优先从插件 entry 的 `ctx.baseUrl` 推断（即当前真正�
 迁移完成后，旧包 `dsh plugin --profile web remove dsh-web-advanced-settings` 卸掉即可，两个包不会互相打架
 （旧包的 bundle 补丁随旧包一起消失）。
 
-## 远程访问为什么还需要两处改写（v1.0.2）
+## 远程访问为什么还需要两处改写
 
 把接口暴露到局域网只是第一步。DSH 的宿主与部分插件把「页面是不是回环来源」当作特权判据，
 远程页面天然不满足，于是出现两个只在远程访问时才犯的毛病：
@@ -108,6 +121,21 @@ profile 目录优先从插件 entry 的 `ctx.baseUrl` 推断（即当前真正�
 > 直接挂在官方 http.Server 上，因此 **`0.0.0.0` 与「指定 IP 直通」两种模式都覆盖**，不需要额外代理进程。
 
 自检接口：`GET /advanced-listening/whoami` 会回显宿主实际看到的权威与来源头，用来确认入口改写是否生效。
+
+## 权限 / 外部服务 / 兼容性
+
+**它会动什么（权限）**
+
+- 读当前 profile 目录（`~/.dsh/profiles/<profile>/`）：写设置文件、改 `cordis.patch.yml` 的托管块（改前备份 `.bak`，写入走临时文件 + rename）。
+- 覆写运行中 `HostConnectionService` 的两个实例方法（`requestRejection` / `authorizeIndex`）以实现「取消鉴权」；停用 / 卸载时自动还原，且只还原属于自己的那一层。
+- 在 `webServer` 上注册 `/advanced-listening/*` 路由，并在 http 服务器前挂一层入口头规范化（**只对本机局域网 IPv4 的 Host 生效**）。
+- 为勾选的网卡地址建立 TCP 直通监听（`net` 原样双向转发到 `127.0.0.1:<端口>`）。
+- 点「重启 dsh」时按原命令行在后台拉起新实例（等价于你自己重启一次 dsh）。
+- **不写官方安装目录、不改官方源码、不采集任何数据。**
+
+**外部服务**：无。除你自己打开的设置页之外不发起任何外部请求；`bin/cleanup.mjs` 与测试套件也不联网（`npx -y dsh-advanced-listening-settings cleanup` 只从 npm 取一次包）。
+
+**兼容性**：dsh `0.1.5-rc.3`（已对官方源码核对）；profile `web`；Node ≥ 22.6；Windows / macOS / Linux（重启器在 Windows 用 `netstat` + `taskkill`，POSIX 用 `lsof` + `SIGTERM`）；仅 IPv4 网卡。DSH 处于开发者预览期，升级 dsh 后建议重跑 `npm test` 并确认面板仍能打开。
 
 ## 安全须知
 
@@ -138,7 +166,7 @@ npm run test:e2e                      # 隔离 profile 端到端（高位端口�
 
 ## 修复记录
 
-### v2.0.0 —— 可 npm 分发 / 卸载可干净回退
+### 1.0.0 —— 首个公开发布：可 npm 分发 / 卸载可干净回退
 
 | # | 问题 | 修复 |
 | --- | --- | --- |
@@ -148,7 +176,7 @@ npm run test:e2e                      # 隔离 profile 端到端（高位端口�
 | 17 | 设置文件长期存在，卸载后残留 | 偏离出厂默认才落盘，回到默认自动删除 |
 | 18 | 卸载没有清理入口（`pnpm remove` 不会跑插件代码） | 新增面板「完全清理（卸载前）」+ `bin/cleanup.mjs`（`npx -y dsh-advanced-listening-settings cleanup`，支持 `--dry-run` / `--keep-backup` / `--profile` / `--home`） |
 
-### v1.0.2 —— 远程访问可用性
+### 内部迭代 v1.0.2 —— 远程访问可用性（未发布）
 
 | # | 问题 | 修复 |
 | --- | --- | --- |
@@ -156,9 +184,9 @@ npm run test:e2e                      # 隔离 profile 端到端（高位端口�
 | 12 | 插件市场系统诊断里 npm/github 瞬间「不可达」（`isSameOrigin` 只认回环 Origin，直接 403） | 官方 http.Server 前置入口头规范化（Host/Origin/Referer/Sec-Fetch-Site → 回环权威），只对本机局域网 Host 生效 |
 | 13 | 远程接入排查困难 | 新增 `GET /advanced-listening/whoami`，回显宿主看到的权威与来源头 |
 
-### v1.0.1
+### 内部迭代 v1.0.1（未发布）
 
-v1.0.0 的已知问题与修复：
+内部 v1.0.0 的已知问题与修复：
 
 | # | 问题 | 修复 |
 | --- | --- | --- |

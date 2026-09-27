@@ -68,7 +68,7 @@ export const name = 'advanced-listening-settings'
 /** 硬依赖：没有 webServer 就没有可配置的对象。 */
 export const inject = ['webServer']
 
-const VERSION = '2.0.0'
+const VERSION = '1.0.0'
 const LOG_TAG = '[advanced-listening-settings]'
 const ALL_INTERFACES = '0.0.0.0'
 const LOOPBACK = '127.0.0.1'
