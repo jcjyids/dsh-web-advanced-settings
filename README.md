@@ -21,7 +21,7 @@
 | **取消鉴权** | 去掉 token（401）校验，直接访问 `IP:端口` 即可；Host/Origin 来源校验（403）保留 | 运行时立即生效 |
 | **重启 dsh**（二次确认） | 按原命令在后台拉起新实例 | 立即 |
 | **访问地址…**（二级页） | 列出全部可用入口 URL，一键复制；免鉴权时列不带 token 的地址 | — |
-| **配置与清理…**（二级页） | 查看托管块与文件位置、检测并一键清理旧的 `dsh-lan-open` 条目、移除托管块、完全清理（卸载前） | — |
+| **配置与清理…**（二级页） | 查看托管块与文件位置、检测并清理历史遗留条目、移除托管块、完全清理（卸载前） | — |
 
 ## 界面预览
 
@@ -52,7 +52,7 @@ dsh plugin --profile web add .\dsh-advanced-listening-settings-1.0.0.tgz
 
 ```powershell
 # 1) 先在面板「配置与清理… → 完全清理（卸载前）」点一下
-#    它会删掉：托管块、旧条目、设置文件、旧版本遗留的重启器
+#    它会删掉插件写下的一切：托管块、遗留条目、设置文件
 # 2) 再卸载
 dsh plugin --profile web remove dsh-advanced-listening-settings
 # 3) 重启 dsh
@@ -66,7 +66,7 @@ npx -y dsh-advanced-listening-settings cleanup             # 真删
 npx -y dsh-advanced-listening-settings cleanup --profile web --home "$env:USERPROFILE\.dsh"
 ```
 
-`pnpm remove` 会自己清掉 profile 的 `package.json` 依赖、`dsh.profile.bundles` 条目、`node_modules` 链接与 `pnpm-lock.yaml` 条目；**但它不会跑插件的代码**，所以插件写在 profile 里的状态文件、组合层托管块，以及旧版本曾写在 `~/.dsh` 的重启器，都要靠上面这两条路收回。
+`pnpm remove` 会自己清掉 profile 的 `package.json` 依赖、`dsh.profile.bundles` 条目、`node_modules` 链接与 `pnpm-lock.yaml` 条目；**但它不会跑插件的代码**，所以插件写在 profile 里的状态文件与组合层托管块，要靠上面这两条路收回。
 
 **启动失败时的急救**：插件已对初始化异常做了兜底（失败只跳过自己，不影响宿主），仍可用 `remove` 摘掉它；若连启动都不行，直接手工删掉 `cordis.patch.yml` 里 `>>> dsh-advanced-listening-settings` 与 `<<< dsh-advanced-listening-settings` 之间那一段即可。
 
@@ -116,17 +116,9 @@ npx -y dsh-advanced-listening-settings cleanup --profile web --home "$env:USERPR
 | `~/.dsh/profiles/web/cordis.patch.yml` 的托管块 | 只在组合层默认值不够用时（`0.0.0.0` 或非默认端口）；不需要时自动撤掉 | `webserver` 的 `host` / `port`；写入前备份 `.bak`，写入走临时文件 + rename |
 | `~/.dsh/logs/dsh-web-<端口>.log` | 只有点过「重启 dsh」才有 | 重启后新实例的日志 |
 
-本版本起**不再有任何 profile 之外的文件**：重启器改成 `node -e <源码>` 内联两段式（源码经环境变量传给第二段），旧版本的 `~/.dsh/web-advanced-restart.cjs` 会在插件挂载时按文件头签名自动清除。
+插件不在 profile 之外写任何文件：重启器用 `node -e` 内联执行（两段式，源码经环境变量传给第二段），不落盘。
 
 profile 目录优先从插件 entry 的 `ctx.baseUrl` 推断（即当前真正运行的 profile），扫描 `profiles/*/package.json` 只作兜底——避免多个 profile 都装了插件时写错文件。
-
-**从旧版本升级（自动迁移）**：包名从 `dsh-web-advanced-settings` 改为 `dsh-advanced-listening-settings` 不影响已有配置，插件挂载时会自愈：
-
-1. 旧设置文件 `web-advanced-settings.json` → 读出来写成新的 `advanced-listening-settings.json`，**删掉旧文件**；
-2. 旧托管块标记（`>>> dsh-web-advanced-settings 托管块`）→ 原地升级成新标记，只留一段；
-3. `~/.dsh/web-advanced-restart.cjs` → 签名匹配即删除（别人的同名文件不动）。
-
-迁移完成后，旧包 `dsh plugin --profile web remove dsh-web-advanced-settings` 卸掉即可，两个包不会互相打架（旧包的 bundle 补丁随旧包一起消失）。
 
 ## 实现说明
 
@@ -141,7 +133,7 @@ profile 目录优先从插件 entry 的 `ctx.baseUrl` 推断（即当前真正�
 
 ```powershell
 # 离线单元测试（无需启动 dsh）
-node test/patch-rewrite.test.mjs      # 组合文件改写、默认态零残留判定、旧标记升级、CRLF 行偏移
+node test/patch-rewrite.test.mjs      # 组合文件改写、默认态零残留判定、遗留条目识别、CRLF 行偏移
 node test/ingress-normalize.test.mjs  # 入口头改写：dsh-plugin isSameOrigin 与来源围栏的回归点
 node test/client-bundle.test.mjs      # 客户端 bundle：注册 id = 包名、isLoopback 断言与还原、settings.section 契约
 node test/cleanup-cli.test.mjs        # bin/cleanup.mjs：dry-run / 真清 / 幂等 / 不误删他人文件
@@ -152,36 +144,9 @@ npm test                              # 上面 5 套一起跑
 npm run test:e2e                      # 隔离 profile 端到端（高位端口跑真实 dsh，绝不碰 3080 实例）
 ```
 
-`e2e-isolated.mjs` 会在 `test/.tmp/` 下造一个临时 `DSH_HOME` 与 web profile（base + web-app + 本插件），逐项验证：默认回环+鉴权、旧版本自愈迁移、指定 IP 直通、全局监听、免鉴权与 403 围栏、局域网入口改写与市场 POST 判定、改端口热重载、重启后设置保持、完全清理后回到出厂态、不产生 profile 之外的文件。
+`e2e-isolated.mjs` 会在 `test/.tmp/` 下造一个临时 `DSH_HOME` 与 web profile（base + web-app + 本插件），逐项验证：默认回环 + 鉴权、指定 IP 直通、全局监听、免鉴权与 403 围栏、局域网入口改写与市场 POST 判定、改端口热重载、重启后设置保持、完全清理后回到出厂态、不产生 profile 之外的文件。
 
 `restart-helper.test.mjs` 与 `e2e-isolated.mjs` 需要调用 `netstat` / `taskkill`，请在普通终端（非受限沙箱）中运行。
-
-## 更新记录
-
-### 1.0.0
-
-首个公开发布：可 npm 分发 / 卸载可干净回退。
-
-| # | 问题 | 修复 |
-| --- | --- | --- |
-| 18 | 卸载没有清理入口（`pnpm remove` 不会跑插件代码） | 新增面板「完全清理（卸载前）」+ `bin/cleanup.mjs`（`npx -y dsh-advanced-listening-settings cleanup`，支持 `--dry-run` / `--keep-backup` / `--profile` / `--home`） |
-| 17 | 设置文件长期存在，卸载后残留 | 偏离出厂默认才落盘，回到默认自动删除 |
-| 16 | 只要挂载过就会写托管块，即使配置等于默认 | 只有 `0.0.0.0` 或「非默认端口且无 `--port`」才写；回到默认自动撤掉；没保存过设置时一个字节都不写 |
-| 15 | 重启器写到 `~/.dsh/web-advanced-restart.cjs`，卸载后残留 | 改成 `node -e <源码>` 内联两段式（源码经环境变量传给第二段），profile 之外零文件；旧文件签名匹配即自动删除 |
-| 14 | 旧名 `dsh-web-advanced-settings` 与分区标题「高级 Web 设置」名不副实 | 全量改名：包名 / 插件行 / 客户端注册 id = `dsh-advanced-listening-settings`，分区标题 =「高级监听设置」；旧装自动迁移 |
-| 13 | 远程接入排查困难 | 新增 `GET /advanced-listening/whoami`，回显宿主看到的权威与来源头 |
-| 12 | 插件市场系统诊断里 npm / github 瞬间「不可达」（`isSameOrigin` 只认回环 Origin，直接 403） | `http.Server` 前置入口头规范化（Host / Origin / Referer / Sec-Fetch-Site → 回环权威），只对本机局域网 Host 生效 |
-| 11 | 远程打开设置 → 模型报 `settings are unavailable in this browser`（settings 镜像降级 memory） | index 注入 `__DSH_TRANSPORT__={ownsHost:true}` + 客户端 `connection.isLoopback` 可逆断言 |
-| 10 | 早期 README 里提到的 `test/` 目录并不存在 | 补齐单元测试与隔离 E2E |
-| 9 | `mode:'ips'` 且未勾地址时前端 dirty 永真、保存按钮点不动 | 服务端与前端都收敛为 `loopback` |
-| 8 | patch / 设置文件直接覆盖写，异常会留半截文件 | 临时文件 + rename 原子替换 |
-| 7 | CRLF 的 `cordis.patch.yml` 行偏移漂移，旧条目 / 托管块识别可能错位 | 按 `\n` 精确分行、统一去掉行尾 CR |
-| 6 | 免鉴权时 `authorizeIndex` 直接返回 true，未信任 Host 也能拿到 index.html | 覆写先调用基函数，403 围栏照旧 |
-| 5 | 鉴权覆写释放时会无条件 `delete`，可能抹掉别的插件的覆写 | 覆写带所有权标记，只还原属于自己的那一层 |
-| 4 | profile 目录靠扫描 `dependencies` 猜，多 profile 时写错文件 | 优先 `ctx.baseUrl`（当前运行 profile），扫描兜底，状态里暴露来源 |
-| 3 | 「指定 IP → 全局」时插件自己占着的端口可能挡住 webserver 重绑 | 写补丁前 `closeAllFrontDoor()` 并等待 `close` |
-| 2 | 直通监听进入 error 后永久粘住 | 周期性对账（2.5s）+ 失败重试 |
-| 1 | 「全局 → 指定 IP」时 webserver 仍占着 `0.0.0.0:port`，直通监听必然 `EADDRINUSE`，失败后不再重试 | 绑定变化前先关闭直通监听并等端口释放；webserver 未收回回环前不建直通；失败自动重试（上限 12 次） |
 
 ## 已知边界
 
