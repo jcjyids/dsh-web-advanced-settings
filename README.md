@@ -27,10 +27,6 @@
 
 ![高级监听设置面板](docs/visual/panel-main.png)
 
-手机或另一台电脑从局域网地址打开同一实例时，设置页里的模型与凭据不再报「settings are unavailable」，插件市场的系统诊断也能真正跑完（见「远程访问」）：
-
-![远程访问下模型设置页可用](docs/visual/remote-after-models-ok.png)
-
 ## 安装
 
 ```powershell

@@ -1,0 +1,8 @@
+﻿# OS 垃圾
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 依赖与临时目录
+node_modules/
+test/.tmp/

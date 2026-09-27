@@ -34,8 +34,7 @@
     "bin/cleanup.mjs",
     "README.md",
     "LICENSE",
-    "docs/visual/panel-main.png",
-    "docs/visual/remote-after-models-ok.png"
+    "docs/visual/panel-main.png"
   ],
   "keywords": [
     "dsh",
